@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Вода — трекер питья</title>
+<style>
+  :root {
+    --bg: #f3f7fb;
+    --card: #ffffff;
+    --water: #2f9be0;
+    --water-dark: #1f7bb8;
+    --water-light: #aee0fb;
+    --text: #18344a;
+    --muted: #6b8298;
+    --line: #e3edf5;
+    --ok: #2faa6a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 24px 16px 48px;
+  }
+  .app { width: 100%; max-width: 440px; }
+
+  header { text-align: center; margin-bottom: 20px; }
+  header h1 { font-size: 24px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  header .date { color: var(--muted); font-size: 14px; margin-top: 4px; }
+
+  .card {
+    background: var(--card);
+    border-radius: 20px;
+    padding: 22px;
+    box-shadow: 0 6px 24px rgba(31,123,184,0.08);
+    margin-bottom: 16px;
+  }
+
+  /* Стакан */
+  .glass-wrap { display: flex; flex-direction: column; align-items: center; }
+  .glass {
+    position: relative;
+    width: 150px;
+    height: 200px;
+    border: 4px solid var(--water-light);
+    border-top: none;
+    border-radius: 8px 8px 26px 26px;
+    overflow: hidden;
+    background: #f6fbff;
+  }
+  .fill {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 0%;
+    background: linear-gradient(to top, var(--water-dark), var(--water));
+    transition: height 0.6s cubic-bezier(.4,1.4,.5,1);
+  }
+  .fill::before {
+    content: "";
+    position: absolute;
+    top: -10px; left: -25%;
+    width: 150%; height: 20px;
+    background: var(--water-light);
+    border-radius: 45%;
+    opacity: 0.5;
+    animation: wave 3s linear infinite;
+  }
+  @keyframes wave { from { transform: translateX(0) } to { transform: translateX(33%) } }
+  .glass .label {
+    position: absolute;
+    top: 50%; left: 0; right: 0;
+    transform: translateY(-50%);
+    text-align: center;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--water-dark);
+    z-index: 2;
+    text-shadow: 0 1px 3px rgba(255,255,255,0.7);
+  }
+
+  .summary { text-align: center; margin-top: 18px; }
+  .summary .big { font-size: 30px; font-weight: 700; color: var(--water-dark); }
+  .summary .goal { color: var(--muted); font-size: 15px; }
+  .summary .left { margin-top: 6px; font-size: 14px; color: var(--muted); }
+  .summary .done { color: var(--ok); font-weight: 600; }
+
+  .section-title { font-size: 14px; color: var(--muted); margin-bottom: 12px; font-weight: 600; }
+
+  .btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .btn {
+    border: none;
+    background: #eaf5fd;
+    color: var(--water-dark);
+    border-radius: 14px;
+    padding: 14px 6px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform .08s, background .15s;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .btn:hover { background: #dceefb; }
+  .btn:active { transform: scale(0.95); }
+  .btn .ic { font-size: 22px; }
+
+  .custom-row { display: flex; gap: 10px; margin-top: 12px; }
+  .custom-row input {
+    flex: 1;
+    border: 1.5px solid var(--line);
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 15px;
+    outline: none;
+  }
+  .custom-row input:focus { border-color: var(--water); }
+  .custom-row button {
+    border: none;
+    background: var(--water);
+    color: #fff;
+    border-radius: 12px;
+    padding: 0 20px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .custom-row button:active { transform: scale(0.96); }
+
+  .mini-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; }
+  .link-btn { background: none; border: none; color: var(--muted); font-size: 13px; cursor: pointer; text-decoration: underline; }
+  .link-btn.danger { color: #d96363; }
+
+  .goal-row { display: flex; align-items: center; gap: 10px; justify-content: center; }
+  .goal-row input { width: 80px; text-align: center; border: 1.5px solid var(--line); border-radius: 10px; padding: 8px; font-size: 15px; }
+
+  /* История */
+  .hist-day { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .hist-day:last-child { border-bottom: none; }
+  .hist-date { width: 70px; font-size: 13px; color: var(--muted); }
+  .hist-bar-wrap { flex: 1; height: 10px; background: #eef5fa; border-radius: 6px; overflow: hidden; }
+  .hist-bar { height: 100%; background: var(--water); border-radius: 6px; }
+  .hist-val { width: 56px; text-align: right; font-size: 13px; font-weight: 600; }
+  .hist-val.full { color: var(--ok); }
+  .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 8px; }
+
+  footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>💧 Вода</h1>
+    <div class="date" id="today"></div>
+  </header>
+
+  <div class="card glass-wrap">
+    <div class="glass">
+      <div class="fill" id="fill"></div>
+      <div class="label" id="percent">0%</div>
+    </div>
+    <div class="summary">
+      <div><span class="big" id="current">0,0</span><span class="goal" id="goalText"> / 2,5 л</span></div>
+      <div class="left" id="left">Осталось 2,5 л</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">Добавить воду</div>
+    <div class="btns">
+      <button class="btn" onclick="addWater(200)"><span class="ic">🥛</span>200 мл</button>
+      <button class="btn" onclick="addWater(300)"><span class="ic">🍵</span>300 мл</button>
+      <button class="btn" onclick="addWater(500)"><span class="ic">🍶</span>500 мл</button>
+    </div>
+    <div class="custom-row">
+      <input type="number" id="customMl" placeholder="Свой объём, мл" min="1">
+      <button onclick="addCustom()">＋</button>
+    </div>
+    <div class="mini-actions">
+      <button class="link-btn" onclick="undo()">↩ Отменить</button>
+      <button class="link-btn danger" onclick="resetDay()">Сбросить день</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">Цель на день</div>
+    <div class="goal-row">
+      <button class="btn" style="padding:8px 14px" onclick="changeGoal(-250)">−</button>
+      <input type="number" id="goalInput" step="0.1" min="0.5">
+      <span style="color:var(--muted)">л</span>
+      <button class="btn" style="padding:8px 14px" onclick="changeGoal(250)">＋</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">История за неделю</div>
+    <div id="history"></div>
+  </div>
+
+  <footer>Данные сохраняются в этом браузере · домашнее задание</footer>
+</div>
+
+<script>
+const GOAL_KEY = "water_goal_ml";
+const DATA_KEY = "water_data";
+
+let goalMl = parseInt(localStorage.getItem(GOAL_KEY)) || 2500;
+let data = JSON.parse(localStorage.getItem(DATA_KEY) || "{}");
+
+function todayKey() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+}
+function litres(ml) {
+  return (ml/1000).toLocaleString("ru-RU", {minimumFractionDigits: 1, maximumFractionDigits: 2});
+}
+function save() {
+  localStorage.setItem(DATA_KEY, JSON.stringify(data));
+  localStorage.setItem(GOAL_KEY, goalMl);
+}
+
+function addWater(ml) {
+  const k = todayKey();
+  data[k] = (data[k] || 0) + ml;
+  save();
+  render();
+}
+function addCustom() {
+  const inp = document.getElementById("customMl");
+  const v = parseInt(inp.value);
+  if (v && v > 0) { addWater(v); inp.value = ""; }
+}
+function undo() {
+  const k = todayKey();
+  if (!data[k]) return;
+  data[k] = Math.max(0, data[k] - 200);
+  if (data[k] === 0) delete data[k];
+  save();
+  render();
+}
+function resetDay() {
+  const k = todayKey();
+  if (data[k] && confirm("Сбросить выпитое за сегодня?")) {
+    delete data[k];
+    save();
+    render();
+  }
+}
+function changeGoal(delta) {
+  goalMl = Math.max(500, goalMl + delta);
+  save();
+  render();
+}
+
+function render() {
+  const k = todayKey();
+  const cur = data[k] || 0;
+  const pct = Math.min(100, Math.round(cur / goalMl * 100));
+
+  document.getElementById("fill").style.height = pct + "%";
+  document.getElementById("percent").textContent = pct + "%";
+  document.getElementById("current").textContent = litres(cur);
+  document.getElementById("goalText").textContent = " / " + litres(goalMl) + " л";
+  document.getElementById("goalInput").value = (goalMl/1000).toFixed(goalMl % 1000 === 0 ? 1 : 2);
+
+  const leftEl = document.getElementById("left");
+  if (cur >= goalMl) {
+    leftEl.innerHTML = '<span class="done">🎉 Цель достигнута! Молодец!</span>';
+  } else {
+    leftEl.textContent = "Осталось " + litres(goalMl - cur) + " л";
+  }
+
+  // дата
+  document.getElementById("today").textContent =
+    new Date().toLocaleDateString("ru-RU", {weekday:"long", day:"numeric", month:"long"});
+
+  renderHistory();
+}
+
+function renderHistory() {
+  const box = document.getElementById("history");
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const k = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+    days.push({ k, label: d.toLocaleDateString("ru-RU",{day:"numeric",month:"short"}), ml: data[k] || 0 });
+  }
+  if (days.every(d => d.ml === 0)) {
+    box.innerHTML = '<div class="empty">Пока нет данных — начните пить воду 💧</div>';
+    return;
+  }
+  box.innerHTML = days.map(d => {
+    const pct = Math.min(100, Math.round(d.ml / goalMl * 100));
+    const full = d.ml >= goalMl ? "full" : "";
+    return `<div class="hist-day">
+      <div class="hist-date">${d.label}</div>
+      <div class="hist-bar-wrap"><div class="hist-bar" style="width:${pct}%"></div></div>
+      <div class="hist-val ${full}">${litres(d.ml)} л</div>
+    </div>`;
+  }).join("");
+}
+
+document.getElementById("goalInput").addEventListener("change", function() {
+  const v = parseFloat(this.value.replace(",", "."));
+  if (v && v >= 0.5) { goalMl = Math.round(v * 1000); save(); }
+  render();
+});
+document.getElementById("customMl").addEventListener("keydown", e => {
+  if (e.key === "Enter") addCustom();
+});
+
+render();
+</script>
+</body>
+</html>
